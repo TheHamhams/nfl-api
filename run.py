@@ -1,5 +1,3 @@
-from ast import Attribute
-from unittest import result
 from flask import Flask
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from flask_sqlalchemy import SQLAlchemy
@@ -57,17 +55,6 @@ class User(db.Model):
 
 db.drop_all()
 db.create_all()
-
-nfc = League(id=0, league_name='National')
-nfc_north = Division(id=0, division_name='North', league_id=0, league_name='National')
-packers = Team(id=0, team_name='Packers', city='Green Bay', league_id=0, league_name='National', division_id=0, division_name='North')
-bears = Team(id=1, team_name='Bears', city='Chicago', league_id=0, league_name='National', division_id=0, division_name='North')
-
-db.session.add(nfc)
-db.session.add(nfc_north)
-db.session.add(packers)
-db.session.add(bears)
-db.session.commit()
 
 league_put_args = reqparse.RequestParser()
 league_put_args.add_argument('league_name', type=str, help='League name required', required=True)
@@ -176,7 +163,6 @@ class TeamR(Resource):
         db.session.commit()
         return team, 201
         
-
 api.add_resource(LeagueR, '/league/<int:league_id>')
 api.add_resource(DivisionR, '/division/<int:division_id>')
 api.add_resource(TeamR, '/team/<int:team_id>')
