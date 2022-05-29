@@ -11,7 +11,7 @@ app = Flask(__name__)
 api = Api(app)
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 SECRET_KEY = os.environ.get('SECRET_KEY')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -51,8 +51,8 @@ class Team(db.Model):
 USER_DATA = {
     'admin': SECRET_KEY
 }
-db.drop_all()
-db.create_all()
+#db.drop_all()
+#db.create_all()
 
 league_put_args = reqparse.RequestParser()
 league_put_args.add_argument('league_name', type=str, help='League name required', required=True)
