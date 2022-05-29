@@ -219,4 +219,4 @@ api.add_resource(DivisionR, '/division/<int:division_id>')
 api.add_resource(TeamR, '/team/<int:team_id>')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
