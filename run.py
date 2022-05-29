@@ -1,3 +1,4 @@
+
 from flask import Flask
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from flask_sqlalchemy import SQLAlchemy
@@ -5,12 +6,14 @@ from flask_httpauth import HTTPBasicAuth
 from flask_cors import CORS
 import os
 
+
 app = Flask(__name__)
 api = Api(app)
 CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JSON_SORT_KEYS'] = False
 
@@ -45,19 +48,17 @@ class Team(db.Model):
     def __repr__(self):
         return f'Team(name={self.name}, city={self.city}, league={self.league}, division={self.division})'
     
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, nullable=False)
-    password = db.Column(db.String(20), nullable=False)
-    
-    def __repr__(self) -> str:
-        return f"User('{self.username}')"
-
-db.drop_all()
-db.create_all()
+USER_DATA = {
+    'admin': SECRET_KEY
+}
+#db.drop_all()
+#db.create_all()
 
 league_put_args = reqparse.RequestParser()
 league_put_args.add_argument('league_name', type=str, help='League name required', required=True)
+
+league_patch_args = reqparse.RequestParser()
+league_patch_args.add_argument('league_name', type=str, help='League name required', required=True)
 
 division_put_args = reqparse.RequestParser()
 division_put_args.add_argument('division_name', type=str, help='Division name required', required=True)
@@ -96,11 +97,9 @@ team_resource_fields = {
 
 @auth.verify_password
 def verify(username, password):
-    user = User.query.filter_by(name=username).first()
-    if not user:
+    if not (username and password):
         return False
-    user_password = user.password
-    return user_password == password
+    return USER_DATA.get(username) == password
 
 class LeagueR(Resource):
     @marshal_with(league_resource_fields)
@@ -110,6 +109,7 @@ class LeagueR(Resource):
             abort(404, message='Could not find league with that ID')
         return result
     
+    @auth.login_required
     @marshal_with(league_resource_fields)
     def put(self, league_id):
         args = league_put_args.parse_args()
@@ -121,14 +121,36 @@ class LeagueR(Resource):
         db.session.commit()
         return league, 201
     
+    @auth.login_required
+    @marshal_with(league_resource_fields)
+    def patch(self, league_id):
+        args = league_patch_args.parse_args()
+        result = League.query.filter_by(id=league_id).first()
+        if not result:
+            abort(404, message='League ID does not exist, cannot update')
+        result.league_name = args.league_name
+        db.session.commit()
+        return result
+    
+    @auth.login_required
+    @marshal_with(league_resource_fields)
+    def delete(self, league_id):
+        result = League.query.filter_by(id=league_id).first()
+        if not result:
+            abort(404, message="League ID doesn't exist, cannot delete")
+        db.session.delete(result)
+        db.session.commit()
+        return '', 204
+    
 class DivisionR(Resource):
     @marshal_with(division_resource_fields)
     def get(self, division_id):
         result = Division.query.filter_by(id=division_id).first()
         if not result:
-            abort(404, message='Could not find league with that ID')
+            abort(404, message='Could not find division with that ID')
         return result
     
+    @auth.login_required
     @marshal_with(division_resource_fields)
     def put(self, division_id):
         args = division_put_args.parse_args()
@@ -140,6 +162,16 @@ class DivisionR(Resource):
         db.session.add(division)
         db.session.commit()
         return division, 201
+    
+    @auth.login_required
+    @marshal_with(division_resource_fields)
+    def delete(self, division_id):
+        result = Division.query.filter_by(id=division_id).first()
+        if not result:
+            abort(404, message="Division ID doesn't exist, cannot delete")
+        db.session.delete(result)
+        db.session.commit()
+        return '', 204
 
 
 
@@ -151,17 +183,36 @@ class TeamR(Resource):
             abort(404, message='Could not find team with that ID')
         return result
     
+    @auth.login_required
     @marshal_with(team_resource_fields)
     def put(self, team_id):
         args=team_put_args.parse_args()
         result = Team.query.filter_by(id=team_id).first()
         if result:
             abort(409, message='Team ID already exists')
+        
+        league = League.query.filter_by(id=args.league_id).first()
+        if not league:
+            abort(404, message='Could not find league with that ID')
+        
         division = Division.query.filter_by(id=args.division_id).first()
-        team = Team(id=team_id, team_name=args.team_name, city=args.city, league_id=division.league_id, league_name=division.league_name, division_id=division.id, division_name=division.division_name)
+        if not division:
+            abort(404, message='Could not find division with that ID')
+        
+        team = Team(id=team_id, team_name=args.team_name, city=args.city, league_id=league.id, league_name=league.league_name, division_id=division.id, division_name=division.division_name)
         db.session.add(team)
         db.session.commit()
         return team, 201
+    
+    @auth.login_required
+    @marshal_with(team_resource_fields)
+    def delete(self, team_id):
+        result = Team.query.filter_by(id=team_id).first()
+        if not result:
+            abort(404, message="Team ID doesn't exist, cannot delete")
+        db.session.delete(result)
+        db.session.commit()
+        return '', 204
         
 api.add_resource(LeagueR, '/league/<int:league_id>')
 api.add_resource(DivisionR, '/division/<int:division_id>')
