@@ -1,7 +1,7 @@
 from run import db,  League, Division, Team
 
-db.drop_all()
-db.create_all()
+#db.drop_all()
+#db.create_all()
 
 nfc = League(id=0, league_name='National')
 afc = League(id=1, league_name='American')

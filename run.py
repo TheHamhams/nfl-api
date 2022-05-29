@@ -51,8 +51,8 @@ class Team(db.Model):
 USER_DATA = {
     'admin': SECRET_KEY
 }
-#db.drop_all()
-#db.create_all()
+db.drop_all()
+db.create_all()
 
 league_put_args = reqparse.RequestParser()
 league_put_args.add_argument('league_name', type=str, help='League name required', required=True)
