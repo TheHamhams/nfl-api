@@ -58,17 +58,27 @@ league_put_args = reqparse.RequestParser()
 league_put_args.add_argument('league_name', type=str, help='League name required', required=True)
 
 league_patch_args = reqparse.RequestParser()
-league_patch_args.add_argument('league_name', type=str, help='League name required', required=True)
+league_patch_args.add_argument('league_name', type=str, required=True)
 
 division_put_args = reqparse.RequestParser()
 division_put_args.add_argument('division_name', type=str, help='Division name required', required=True)
 division_put_args.add_argument('league_id', type=int, help='League ID required', required=True)
+
+division_patch_args = reqparse.RequestParser()
+division_patch_args.add_argument('division_name', type=str)
+division_patch_args.add_argument('league_id', type=int)
 
 team_put_args = reqparse.RequestParser()
 team_put_args.add_argument('team_name', type=str, help='Team name required', required=True)
 team_put_args.add_argument('city', type=str, help='Team city required', required=True)
 team_put_args.add_argument('league_id', type=int, help='Team league ID required', required=True)
 team_put_args.add_argument('division_id', type=int, help='Team division ID required', required=True)
+
+team_patch_args = reqparse.RequestParser()
+team_patch_args.add_argument('team_name', type=str)
+team_patch_args.add_argument('city', type=str)
+team_patch_args.add_argument('league_id', type=int)
+team_patch_args.add_argument('division_id', type=int)
 
 
 league_resource_fields = {
@@ -129,6 +139,12 @@ class LeagueR(Resource):
         if not result:
             abort(404, message='League ID does not exist, cannot update')
         result.league_name = args.league_name
+        divisions = Division.query.filter_by(league_id=league_id).all()
+        for division in divisions:
+            division.league_name = args.league_name
+        teams = Team.query.filter_by(league_id=league_id).all()
+        for team in teams:
+            team.league_name = args.league_name
         db.session.commit()
         return result
     
@@ -162,6 +178,31 @@ class DivisionR(Resource):
         db.session.add(division)
         db.session.commit()
         return division, 201
+    
+    @auth.login_required
+    @marshal_with(division_resource_fields)
+    def patch(self, division_id):
+        args = division_patch_args.parse_args()
+        result = Division.query.filter_by(id=division_id).first()
+        if not result:
+            abort(404, message="Team ID doesn't exist, cannot update")
+        if args.league_id:
+            result.league_id = args.league_id
+            league = League.query.filter_by(id=args.league_id).first()
+            if not league:
+                abort(404, message="League ID doesn't exist, cannot update")
+            result.league_name = league.league_name
+            teams = Team.query.filter_by(division_id=result.id)
+            for team in teams:
+                team.league_id = league.league_id
+                team.league_name = league.league_name
+        if args.division_name:
+            result.division_name = args.division_name
+            teams = Team.query.filter_by(division_id=result.id)
+            for team in teams:
+                team.division_name = args.division_name
+        db.session.commit()
+        return result
     
     @auth.login_required
     @marshal_with(division_resource_fields)
@@ -203,6 +244,32 @@ class TeamR(Resource):
         db.session.add(team)
         db.session.commit()
         return team, 201
+    
+    @auth.login_required
+    @marshal_with(team_resource_fields)
+    def patch(self, team_id):
+        args = team_patch_args.parse_args()
+        result = Team.query.filter_by(id=team_id).first()
+        if not result:
+            abort(404, message="Team ID doesn't exist, cannot update")
+        if args.team_name:
+            result.team_name = args.team_name
+        if args.city:
+            result.city = args.city
+        if args.league_id:
+            result.league_id = args.league_id
+            league = League.query.filter_by(id=args.league_id).first()
+            if not league:
+                abort(404, message="League ID doesn't exist, cannot update")
+            result.league_name = league.league_name
+        if args.division_id:
+            result.division_id = args.division_id
+            division = Division.query.filter_by(id=args.division_id).first()
+            if not division:
+                abort(404, message="Division ID doesn't exist, cannot update")
+            result.division_name = division.division_name
+        db.session.commit()
+        return result
     
     @auth.login_required
     @marshal_with(team_resource_fields)
