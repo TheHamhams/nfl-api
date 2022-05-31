@@ -280,10 +280,30 @@ class TeamR(Resource):
         db.session.delete(result)
         db.session.commit()
         return '', 204
+    
+class Leagues(Resource):
+    @marshal_with(league_resource_fields)
+    def get(self):
+        return League.query.all()
+        
+    
+class Divisions(Resource):
+    @marshal_with(division_resource_fields)
+    def get(self):
+        return Division.query.all()
+    
+class Teams(Resource):
+    @marshal_with(team_resource_fields)
+    def get(self):
+        return Team.query.all()
         
 api.add_resource(LeagueR, '/league/<int:league_id>')
 api.add_resource(DivisionR, '/division/<int:division_id>')
 api.add_resource(TeamR, '/team/<int:team_id>')
+
+api.add_resource(Leagues, '/leagues')
+api.add_resource(Divisions, '/divisions')
+api.add_resource(Teams, '/teams')
 
 if __name__ == '__main__':
     app.run()
